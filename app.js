@@ -2,6 +2,8 @@ const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
+const methodOverride = require("method-override");
+const expressSanitizer = require("express-sanitizer");
 
 const PORT = 3004;
 //APP CONFIG
@@ -9,6 +11,8 @@ mongoose.connect("mongodb://localhost/restful_blog_app", { useNewUrlParser: true
 app.set("view engine", "ejs");   //set view engine template
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({extended:true}));
+app.use(expressSanitizer());
+app.use(methodOverride("_method"));
 
 //MONGOOSE CONFIG
 var blogSchema = new mongoose.Schema({
@@ -55,6 +59,7 @@ app.get("/blogs/new", function(req,res){
 })
 
 app.post("/blogs", function(req, res){
+    req.body.blog.body = req.sanitize(req.body.blog.body);
     Blog.create(req.body.blog, function(err, data){
         if(err) {
             console.log(err)
@@ -64,6 +69,54 @@ app.post("/blogs", function(req, res){
     });
 })
 
+//SHOW ROUTE
+app.get("/blogs/:id", function(req, res){
+    Blog.findById(req.params.id, function(err, foundBlog){
+        if(err) {
+            res.redirect("/blogs");
+        } else {
+            res.render("show", {blog: foundBlog});
+        }
+    })
+})
+
+//EDIT ROUTE
+
+app.get("/blogs/:id/edit", function(req, res){
+    Blog.findById(req.params.id, function(err, foundBlog){
+        if(err) {
+            res.redirect("/blogs");
+        } else {
+            console.log(foundBlog);
+            res.render("edit", {blog: foundBlog});
+        }
+    })
+})
+
+//UPDATE ROUTE
+
+app.put("/blogs/:id", function(req, res){   
+    req.body.blog.body = req.sanitize(req.body.blog.body);
+    Blog.findByIdAndUpdate(req.params.id, req.body.blog, function(err, updatedBlog){
+        if(err) {
+            res.redirect("/blogs");
+        } else {
+            res.redirect("/blogs/" + req.params.id);
+        }
+    })
+})
+
+//DELETE ROUTE
+
+app.delete("/blogs/:id", function(req, res){
+    Blog.findByIdAndRemove(req.params.id, function(err){
+        if(err) {
+            res.redirect("/blogs");
+        } else {
+            res.redirect("/blogs");            
+        }
+    })
+})
 
 //LISTEN TO PORT
 app.listen(PORT, function(){
